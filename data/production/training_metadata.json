@@ -1,0 +1,29 @@
+{
+  "dataset_info": {
+    "total_records": 18000,
+    "total_drivers": 1000,
+    "time_period_months": 18,
+    "claim_rate": 0.03866666666666667,
+    "avg_claim_severity": 9170.965941043178
+  },
+  "model_performance": {
+    "avg_auc": 0.8285387817236806,
+    "avg_precision": 0.20753379568267225,
+    "avg_recall": 0.3903423767021712,
+    "std_auc": 0.030499680250016193,
+    "validation_splits": 12
+  },
+  "risk_distribution": {
+    "Very Low": 17944,
+    "Low": 42,
+    "Medium": 8,
+    "High": 3,
+    "Very High": 3
+  },
+  "feature_count": 42,
+  "output_files": {
+    "training_data": "data\\production\\production_training_data.csv",
+    "frequency_model": "data\\production\\frequency_model.xgb",
+    "severity_model": "data\\production\\severity_model.xgb"
+  }
+}

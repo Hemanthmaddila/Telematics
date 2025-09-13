@@ -1,0 +1,112 @@
+# Telematics System Configuration
+
+# Feature Engineering Parameters
+features:
+  # Trip segmentation thresholds
+  trip_gap_threshold_minutes: 10
+  min_trip_duration_minutes: 2
+  min_trip_distance_miles: 0.1
+  
+  # Behavioral event thresholds
+  hard_brake_threshold_g: -0.4
+  rapid_accel_threshold_g: 0.4
+  harsh_corner_threshold_g: 0.4
+  speeding_threshold_mph: 10
+  
+  # Time period definitions
+  night_hours:
+    start: 21  # 9 PM
+    end: 5     # 5 AM
+  late_night_weekend_hours:
+    start: 23  # 11 PM
+    end: 4     # 4 AM
+    days: ["friday", "saturday"]
+  rush_hour_weekday:
+    morning_start: 7
+    morning_end: 9
+    evening_start: 17
+    evening_end: 19
+
+# Smart defaults for phone-only users
+defaults:
+  phone_only:
+    avg_engine_rpm: 2100
+    has_dtc_codes: false
+    airbag_deployment_flag: false
+    gps_accuracy_avg_meters: 8.0
+    driver_passenger_confidence_score: 0.85
+
+# Model parameters
+model:
+  algorithm: "xgboost"
+  hyperparameters:
+    n_estimators: 1000
+    max_depth: 6
+    learning_rate: 0.1
+    subsample: 0.8
+    colsample_bytree: 0.8
+    random_state: 42
+  
+  # Feature importance threshold for SHAP analysis
+  shap_min_feature_importance: 0.01
+
+# API Configuration
+apis:
+  weather:
+    provider: "openmeteo"
+    base_url: "https://api.open-meteo.com/v1"
+    timeout_seconds: 30
+  
+  mapping:
+    provider: "osm"
+    overpass_url: "https://overpass-api.de/api"
+    timeout_seconds: 30
+  
+  traffic:
+    # For POC, using simulation instead of real APIs
+    simulate: true
+
+# Data sources and paths
+data:
+  raw_data_path: "./data/raw"
+  processed_data_path: "./data/processed"
+  model_output_path: "./data/models"
+  
+  # Dataset locations (will be downloaded/simulated)
+  datasets:
+    smartphone_sensors: "./data/raw/smartphone_sensors"
+    obd_samples: "./data/raw/obd_samples"
+    speed_limits: "./data/raw/osm_speed_limits"
+    driver_profiles: "./data/raw/driver_profiles.parquet"
+
+# Simulation parameters
+simulation:
+  num_drivers: 1000
+  months_per_driver: 12
+  avg_trips_per_month: 45
+  
+  # Driver persona distributions
+  personas:
+    safe_driver:
+      probability: 0.6
+      hard_brake_rate_per_100mi: [0.1, 0.5]
+      speeding_rate_per_100mi: [0.0, 0.2]
+      phone_usage_pct: [0.0, 0.05]
+    
+    average_driver:
+      probability: 0.3
+      hard_brake_rate_per_100mi: [0.5, 2.0]
+      speeding_rate_per_100mi: [0.2, 1.0]
+      phone_usage_pct: [0.05, 0.15]
+    
+    risky_driver:
+      probability: 0.1
+      hard_brake_rate_per_100mi: [2.0, 8.0]
+      speeding_rate_per_100mi: [1.0, 5.0]
+      phone_usage_pct: [0.15, 0.40]
+
+# Logging configuration
+logging:
+  level: "INFO"
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+  file: "./logs/telematics.log"

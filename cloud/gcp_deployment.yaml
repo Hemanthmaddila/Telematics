@@ -1,0 +1,130 @@
+# Google Cloud Platform Deployment Configuration
+# Complete production setup for GKE + Cloud SQL + Memorystore
+
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: telematics-gcp
+---
+# GCP Cloud SQL Connection
+apiVersion: v1
+kind: Secret
+metadata:
+  name: gcp-database-secret
+  namespace: telematics-gcp
+type: Opaque
+stringData:
+  database-url: "postgresql://telematics:secure_password@10.0.0.3:5432/telematics"
+  redis-url: "redis://10.0.0.4:6379"
+---
+# Google Cloud Load Balancer
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: telematics-ingress
+  namespace: telematics-gcp
+  annotations:
+    kubernetes.io/ingress.class: "gce"
+    kubernetes.io/ingress.global-static-ip-name: "telematics-ip"
+    networking.gke.io/managed-certificates: "telematics-ssl-cert"
+    kubernetes.io/ingress.allow-http: "false"
+spec:
+  rules:
+  - host: api.telematics.com
+    http:
+      paths:
+      - path: /*
+        pathType: ImplementationSpecific
+        backend:
+          service:
+            name: api-gateway
+            port:
+              number: 8080
+  - host: airflow.telematics.com
+    http:
+      paths:
+      - path: /*
+        pathType: ImplementationSpecific
+        backend:
+          service:
+            name: airflow-webserver
+            port:
+              number: 8080
+---
+# Managed SSL Certificate
+apiVersion: networking.gke.io/v1
+kind: ManagedCertificate
+metadata:
+  name: telematics-ssl-cert
+  namespace: telematics-gcp
+spec:
+  domains:
+    - api.telematics.com
+    - airflow.telematics.com
+    - mlflow.telematics.com
+---
+# API Gateway with GCP integrations
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: api-gateway
+  namespace: telematics-gcp
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: api-gateway
+  template:
+    metadata:
+      labels:
+        app: api-gateway
+    spec:
+      containers:
+      - name: api-gateway
+        image: gcr.io/telematics-project/api-gateway:latest
+        ports:
+        - containerPort: 8080
+        env:
+        - name: GOOGLE_CLOUD_PROJECT
+          value: "telematics-project"
+        - name: PUBSUB_TOPIC
+          value: "telematics-events"
+        - name: BIGQUERY_DATASET
+          value: "telematics_analytics"
+        - name: CLOUD_STORAGE_BUCKET
+          value: "telematics-data-bucket"
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "250m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+---
+# Cloud Function for ML Processing (Serverless)
+apiVersion: serving.knative.dev/v1
+kind: Service
+metadata:
+  name: ml-processor
+  namespace: telematics-gcp
+  annotations:
+    run.googleapis.com/ingress: all
+spec:
+  template:
+    metadata:
+      annotations:
+        autoscaling.knative.dev/maxScale: "100"
+        run.googleapis.com/cpu-throttling: "false"
+    spec:
+      containers:
+      - image: gcr.io/telematics-project/ml-processor:latest
+        env:
+        - name: AI_PLATFORM_MODEL
+          value: "projects/telematics-project/models/risk_model"
+        - name: VERTEX_AI_ENDPOINT
+          value: "projects/telematics-project/locations/us-central1/endpoints/123456789"
+        resources:
+          limits:
+            memory: "2Gi"
+            cpu: "2000m"
+

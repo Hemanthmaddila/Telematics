@@ -1,0 +1,7 @@
+{
+  "description": "Sample smartphone sensor data for telematics",
+  "records": 1000,
+  "duration_minutes": 16.67,
+  "sampling_rate_hz": 1,
+  "location": "Chicago, IL area"
+}

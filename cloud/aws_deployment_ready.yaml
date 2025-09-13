@@ -1,0 +1,364 @@
+# AWS Production Deployment - Ready to Use
+# Complete EKS setup for your telematics platform
+
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: telematics-prod
+  labels:
+    name: telematics-prod
+    environment: production
+---
+# ConfigMap for AWS services
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: aws-config
+  namespace: telematics-prod
+data:
+  aws_region: "us-west-2"
+  s3_bucket: "telematics-data-production"
+  dynamodb_trips_table: "telematics-trips-prod"
+  dynamodb_drivers_table: "telematics-drivers-prod"
+  rds_endpoint: "telematics-aurora.cluster-abc123.us-west-2.rds.amazonaws.com"
+  elasticache_endpoint: "telematics-redis.abc123.cache.amazonaws.com"
+  kinesis_stream: "telematics-trip-stream"
+  sagemaker_endpoint: "telematics-risk-model-prod"
+---
+# Secret for database credentials
+apiVersion: v1
+kind: Secret
+metadata:
+  name: aws-secrets
+  namespace: telematics-prod
+type: Opaque
+stringData:
+  database_url: "postgresql://telematics_user:SECURE_PASSWORD@telematics-aurora.cluster-abc123.us-west-2.rds.amazonaws.com:5432/telematics"
+  redis_url: "redis://telematics-redis.abc123.cache.amazonaws.com:6379"
+  aws_access_key_id: "AKIAIOSFODNN7EXAMPLE"
+  aws_secret_access_key: "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"
+---
+# API Gateway - Main entry point
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: api-gateway
+  namespace: telematics-prod
+spec:
+  replicas: 5
+  selector:
+    matchLabels:
+      app: api-gateway
+  template:
+    metadata:
+      labels:
+        app: api-gateway
+    spec:
+      containers:
+      - name: api-gateway
+        image: your-account.dkr.ecr.us-west-2.amazonaws.com/telematics-api-gateway:latest
+        ports:
+        - containerPort: 8080
+        env:
+        - name: AWS_REGION
+          valueFrom:
+            configMapKeyRef:
+              name: aws-config
+              key: aws_region
+        - name: AWS_ACCESS_KEY_ID
+          valueFrom:
+            secretKeyRef:
+              name: aws-secrets
+              key: aws_access_key_id
+        - name: AWS_SECRET_ACCESS_KEY
+          valueFrom:
+            secretKeyRef:
+              name: aws-secrets
+              key: aws_secret_access_key
+        - name: DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              name: aws-secrets
+              key: database_url
+        - name: REDIS_URL
+          valueFrom:
+            secretKeyRef:
+              name: aws-secrets
+              key: redis_url
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "500m"
+          limits:
+            memory: "1Gi"
+            cpu: "1000m"
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          initialDelaySeconds: 10
+          periodSeconds: 5
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          initialDelaySeconds: 30
+          periodSeconds: 10
+---
+# Trip Service with AWS integrations
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: trip-service
+  namespace: telematics-prod
+spec:
+  replicas: 10
+  selector:
+    matchLabels:
+      app: trip-service
+  template:
+    metadata:
+      labels:
+        app: trip-service
+    spec:
+      containers:
+      - name: trip-service
+        image: your-account.dkr.ecr.us-west-2.amazonaws.com/telematics-trip-service:latest
+        ports:
+        - containerPort: 8081
+        env:
+        - name: AWS_REGION
+          valueFrom:
+            configMapKeyRef:
+              name: aws-config
+              key: aws_region
+        - name: S3_BUCKET
+          valueFrom:
+            configMapKeyRef:
+              name: aws-config
+              key: s3_bucket
+        - name: DYNAMODB_TABLE
+          valueFrom:
+            configMapKeyRef:
+              name: aws-config
+              key: dynamodb_trips_table
+        - name: KINESIS_STREAM
+          valueFrom:
+            configMapKeyRef:
+              name: aws-config
+              key: kinesis_stream
+        resources:
+          requests:
+            memory: "1Gi"
+            cpu: "1000m"
+          limits:
+            memory: "2Gi"
+            cpu: "2000m"
+---
+# Risk Service with SageMaker integration
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: risk-service
+  namespace: telematics-prod
+spec:
+  replicas: 8
+  selector:
+    matchLabels:
+      app: risk-service
+  template:
+    metadata:
+      labels:
+        app: risk-service
+    spec:
+      containers:
+      - name: risk-service
+        image: your-account.dkr.ecr.us-west-2.amazonaws.com/telematics-risk-service:latest
+        ports:
+        - containerPort: 8082
+        env:
+        - name: SAGEMAKER_ENDPOINT
+          valueFrom:
+            configMapKeyRef:
+              name: aws-config
+              key: sagemaker_endpoint
+        - name: AWS_REGION
+          valueFrom:
+            configMapKeyRef:
+              name: aws-config
+              key: aws_region
+        resources:
+          requests:
+            memory: "2Gi"
+            cpu: "1500m"
+          limits:
+            memory: "4Gi"
+            cpu: "3000m"
+---
+# Pricing Service
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pricing-service
+  namespace: telematics-prod
+spec:
+  replicas: 6
+  selector:
+    matchLabels:
+      app: pricing-service
+  template:
+    metadata:
+      labels:
+        app: pricing-service
+    spec:
+      containers:
+      - name: pricing-service
+        image: your-account.dkr.ecr.us-west-2.amazonaws.com/telematics-pricing-service:latest
+        ports:
+        - containerPort: 8083
+        env:
+        - name: REDIS_URL
+          valueFrom:
+            secretKeyRef:
+              name: aws-secrets
+              key: redis_url
+        - name: DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              name: aws-secrets
+              key: database_url
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "500m"
+          limits:
+            memory: "1Gi"
+            cpu: "1000m"
+---
+# Service definitions
+apiVersion: v1
+kind: Service
+metadata:
+  name: api-gateway
+  namespace: telematics-prod
+spec:
+  selector:
+    app: api-gateway
+  ports:
+  - port: 80
+    targetPort: 8080
+  type: ClusterIP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: trip-service
+  namespace: telematics-prod
+spec:
+  selector:
+    app: trip-service
+  ports:
+  - port: 8081
+    targetPort: 8081
+  type: ClusterIP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: risk-service
+  namespace: telematics-prod
+spec:
+  selector:
+    app: risk-service
+  ports:
+  - port: 8082
+    targetPort: 8082
+  type: ClusterIP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: pricing-service
+  namespace: telematics-prod
+spec:
+  selector:
+    app: pricing-service
+  ports:
+  - port: 8083
+    targetPort: 8083
+  type: ClusterIP
+---
+# Horizontal Pod Autoscaler for API Gateway
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: api-gateway-hpa
+  namespace: telematics-prod
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: api-gateway
+  minReplicas: 5
+  maxReplicas: 100
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 70
+  - type: Resource
+    resource:
+      name: memory
+      target:
+        type: Utilization
+        averageUtilization: 80
+---
+# HPA for Trip Service
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: trip-service-hpa
+  namespace: telematics-prod
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: trip-service
+  minReplicas: 10
+  maxReplicas: 200
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 70
+---
+# Application Load Balancer Ingress
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: telematics-ingress
+  namespace: telematics-prod
+  annotations:
+    kubernetes.io/ingress.class: alb
+    alb.ingress.kubernetes.io/scheme: internet-facing
+    alb.ingress.kubernetes.io/target-type: ip
+    alb.ingress.kubernetes.io/ssl-redirect: '443'
+    alb.ingress.kubernetes.io/certificate-arn: arn:aws:acm:us-west-2:123456789012:certificate/abc123-def456
+    alb.ingress.kubernetes.io/healthcheck-path: /health
+spec:
+  rules:
+  - host: api.telematics.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: api-gateway
+            port:
+              number: 80
+

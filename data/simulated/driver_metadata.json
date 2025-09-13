@@ -1,0 +1,45 @@
+{
+  "generation_info": {
+    "total_drivers": 1000,
+    "generation_date": "2025-09-12T11:51:14.901224",
+    "random_seed": 42
+  },
+  "demographics": {
+    "age_distribution": {
+      "mean": 43.367,
+      "std": 11.320532914375784,
+      "min": 18,
+      "max": 65
+    },
+    "years_licensed_distribution": {
+      "mean": 13.403,
+      "std": 9.646327935678045,
+      "min": 1,
+      "max": 44
+    }
+  },
+  "persona_distribution": {
+    "safe_driver": 614,
+    "average_driver": 288,
+    "risky_driver": 98
+  },
+  "data_source_distribution": {
+    "phone_plus_device": 507,
+    "phone_only": 493
+  },
+  "vehicle_info": {
+    "top_makes": {
+      "Toyota": 179,
+      "Honda": 147,
+      "Hyundai": 129,
+      "Subaru": 124,
+      "Mazda": 123
+    },
+    "avg_vehicle_age": 5.678
+  },
+  "risk_factors": {
+    "drivers_with_accidents": 595,
+    "avg_accidents": 1.047,
+    "avg_claim_probability": 0.073592801023257
+  }
+}

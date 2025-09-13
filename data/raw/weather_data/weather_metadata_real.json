@@ -1,0 +1,14 @@
+{
+  "source": "Open-Meteo Archive API",
+  "location": {
+    "latitude": 41.8781,
+    "longitude": -87.6298
+  },
+  "date_range": {
+    "start": "2024-01-01",
+    "end": "2024-12-31"
+  },
+  "daily_records": 366,
+  "hourly_records": 8784,
+  "downloaded_at": "2025-09-12T11:35:16.797609"
+}

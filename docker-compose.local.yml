@@ -1,0 +1,94 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:13
+    environment:
+      POSTGRES_DB: telematics
+      POSTGRES_USER: telematics_admin
+      POSTGRES_PASSWORD: Hemanth13
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U telematics_admin -d telematics"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Trip Service
+  trip-service:
+    build:
+      context: ./microservices/trip-service
+      dockerfile: Dockerfile.simple
+    ports:
+      - "8081:8081"
+    environment:
+      - DATABASE_URL=postgresql://telematics_admin:Hemanth13@postgres:5432/telematics
+    depends_on:
+      - postgres
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8081/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Risk Service  
+  risk-service:
+    build:
+      context: ./microservices/risk-service
+      dockerfile: Dockerfile
+    ports:
+      - "8082:8082"
+    environment:
+      - DATABASE_URL=postgresql://telematics_admin:Hemanth13@postgres:5432/telematics
+    depends_on:
+      - postgres
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8082/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Pricing Service
+  pricing-service:
+    build:
+      context: ./microservices/pricing-service
+      dockerfile: Dockerfile
+    ports:
+      - "8083:8083"
+    environment:
+      - DATABASE_URL=postgresql://telematics_admin:Hemanth13@postgres:5432/telematics
+    depends_on:
+      - postgres
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8083/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # API Gateway
+  api-gateway:
+    build:
+      context: ./api-gateway
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    environment:
+      - TRIP_SERVICE_URL=http://trip-service:8081
+      - RISK_SERVICE_URL=http://risk-service:8082
+      - PRICING_SERVICE_URL=http://pricing-service:8083
+    depends_on:
+      - trip-service
+      - risk-service
+      - pricing-service
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+volumes:
+  postgres_data:

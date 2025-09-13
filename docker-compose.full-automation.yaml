@@ -1,0 +1,199 @@
+# Level 3: Full Automation with Kafka + Airflow (Easy Install)
+# One-click deployment of complete ML automation system
+
+version: '3.8'
+
+services:
+  # Zookeeper for Kafka
+  zookeeper:
+    image: confluentinc/cp-zookeeper:latest
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    ports:
+      - "2181:2181"
+    networks:
+      - automation-net
+
+  # Apache Kafka
+  kafka:
+    image: confluentinc/cp-kafka:latest
+    depends_on:
+      - zookeeper
+    ports:
+      - "9092:9092"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+    networks:
+      - automation-net
+
+  # Redis Cluster for caching
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+    networks:
+      - automation-net
+
+  # PostgreSQL for Airflow
+  postgres:
+    image: postgres:13
+    environment:
+      POSTGRES_USER: airflow
+      POSTGRES_PASSWORD: airflow
+      POSTGRES_DB: airflow
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - automation-net
+
+  # Apache Airflow (Simplified)
+  airflow-webserver:
+    image: apache/airflow:2.7.0
+    depends_on:
+      - postgres
+      - redis
+    environment:
+      AIRFLOW__CORE__EXECUTOR: LocalExecutor
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres/airflow
+      AIRFLOW__CORE__DAGS_FOLDER: /opt/airflow/dags
+      AIRFLOW__CORE__LOAD_EXAMPLES: "false"
+      AIRFLOW__WEBSERVER__EXPOSE_CONFIG: "true"
+      AIRFLOW__CORE__FERNET_KEY: "d6VzWOooXOqkdcq2wo8L_85_JjddKemN-3CcZOBU4pY="
+      _AIRFLOW_WWW_USER_USERNAME: admin
+      _AIRFLOW_WWW_USER_PASSWORD: admin
+    ports:
+      - "8090:8080"  # Different port to avoid conflicts
+    command: >
+      bash -c "
+        airflow db init &&
+        airflow users create --username admin --firstname Admin --lastname Admin --role Admin --email admin@telematics.com --password admin &&
+        airflow webserver
+      "
+    volumes:
+      - ./automation/dags:/opt/airflow/dags
+      - ./automation/logs:/opt/airflow/logs
+      - ./automation/plugins:/opt/airflow/plugins
+    networks:
+      - automation-net
+
+  # MLflow Tracking Server
+  mlflow:
+    image: python:3.9
+    ports:
+      - "5000:5000"
+    command: >
+      bash -c "
+        pip install mlflow psycopg2-binary &&
+        mlflow server --backend-store-uri sqlite:///mlflow.db --default-artifact-root ./artifacts --host 0.0.0.0 --port 5000
+      "
+    volumes:
+      - mlflow_data:/app
+    working_dir: /app
+    networks:
+      - automation-net
+
+  # Enhanced Trip Service with ML Pipeline
+  trip-service-ml:
+    build:
+      context: ./microservices/trip-service
+      dockerfile: Dockerfile.simple
+    ports:
+      - "8091:8081"
+    environment:
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+      - REDIS_HOST=redis
+      - MLFLOW_TRACKING_URI=http://mlflow:5000
+    depends_on:
+      - kafka
+      - redis
+      - mlflow
+    networks:
+      - automation-net
+
+  # Risk Service with ML Models
+  risk-service-ml:
+    build:
+      context: ./microservices/risk-service
+      dockerfile: Dockerfile
+    ports:
+      - "8092:8082"
+    environment:
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+      - MLFLOW_TRACKING_URI=http://mlflow:5000
+    depends_on:
+      - kafka
+      - mlflow
+    networks:
+      - automation-net
+
+  # Pricing Service with Automation
+  pricing-service-ml:
+    build:
+      context: ./microservices/pricing-service
+      dockerfile: Dockerfile
+    ports:
+      - "8093:8083"
+    environment:
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+      - REDIS_HOST=redis
+    depends_on:
+      - kafka
+      - redis
+    networks:
+      - automation-net
+
+  # Analytics Service with Real-time Processing
+  analytics-service-ml:
+    build:
+      context: ./microservices/analytics-service
+      dockerfile: Dockerfile
+    ports:
+      - "8096:8086"
+    environment:
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+      - REDIS_HOST=redis
+    depends_on:
+      - kafka
+      - redis
+    networks:
+      - automation-net
+
+  # API Gateway for ML System
+  api-gateway-ml:
+    build:
+      context: ./api-gateway
+      dockerfile: Dockerfile
+    ports:
+      - "8099:8080"
+    environment:
+      - TRIP_SERVICE_URL=http://trip-service-ml:8081
+      - RISK_SERVICE_URL=http://risk-service-ml:8082
+      - PRICING_SERVICE_URL=http://pricing-service-ml:8083
+      - ANALYTICS_SERVICE_URL=http://analytics-service-ml:8086
+    depends_on:
+      - trip-service-ml
+      - risk-service-ml
+      - pricing-service-ml
+      - analytics-service-ml
+    networks:
+      - automation-net
+
+networks:
+  automation-net:
+    driver: bridge
+
+volumes:
+  redis_data:
+  postgres_data:
+  mlflow_data:
+

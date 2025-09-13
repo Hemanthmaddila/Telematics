@@ -1,0 +1,129 @@
+# Azure Cloud Deployment Configuration
+# Complete production setup for Azure AKS + Azure Database + Redis Cache
+
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: telematics-azure
+---
+# Azure Database Connection
+apiVersion: v1
+kind: Secret
+metadata:
+  name: azure-database-secret
+  namespace: telematics-azure
+type: Opaque
+stringData:
+  database-url: "postgresql://telematics@telematics-db.postgres.database.azure.com:secure_password@telematics-db.postgres.database.azure.com:5432/telematics?sslmode=require"
+  redis-url: "redis://telematics-cache.redis.cache.windows.net:6380?ssl=true"
+---
+# Azure Application Gateway Ingress
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: telematics-ingress
+  namespace: telematics-azure
+  annotations:
+    kubernetes.io/ingress.class: azure/application-gateway
+    appgw.ingress.kubernetes.io/ssl-redirect: "true"
+    appgw.ingress.kubernetes.io/health-probe-path: "/health"
+spec:
+  tls:
+  - hosts:
+    - telematics.azurewebsites.net
+    - airflow.telematics.azurewebsites.net
+    secretName: telematics-azure-tls
+  rules:
+  - host: telematics.azurewebsites.net
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: api-gateway
+            port:
+              number: 8080
+  - host: airflow.telematics.azurewebsites.net
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: airflow-webserver
+            port:
+              number: 8080
+---
+# API Gateway with Azure Service Bus integration
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: api-gateway
+  namespace: telematics-azure
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: api-gateway
+  template:
+    metadata:
+      labels:
+        app: api-gateway
+    spec:
+      containers:
+      - name: api-gateway
+        image: telematics.azurecr.io/api-gateway:latest
+        ports:
+        - containerPort: 8080
+        env:
+        - name: AZURE_SERVICE_BUS_ENDPOINT
+          value: "Endpoint=sb://telematics.servicebus.windows.net/"
+        - name: AZURE_STORAGE_ACCOUNT
+          value: "telematicsdata"
+        - name: COSMOS_DB_ENDPOINT
+          value: "https://telematics.documents.azure.com:443/"
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "250m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+---
+# Azure Container Instances for ML Processing
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ml-processor
+  namespace: telematics-azure
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: ml-processor
+  template:
+    metadata:
+      labels:
+        app: ml-processor
+    spec:
+      containers:
+      - name: ml-processor
+        image: telematics.azurecr.io/ml-processor:latest
+        env:
+        - name: AZURE_ML_WORKSPACE
+          value: "telematics-ml-workspace"
+        - name: AZURE_BATCH_ACCOUNT
+          value: "telematicsbatch"
+        resources:
+          requests:
+            memory: "2Gi"
+            cpu: "1000m"
+          limits:
+            memory: "4Gi"
+            cpu: "2000m"
+

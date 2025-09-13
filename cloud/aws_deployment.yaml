@@ -1,0 +1,217 @@
+# AWS Cloud Deployment Configuration
+# Complete production setup for AWS EKS + RDS + ElastiCache
+
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: telematics-prod
+---
+# AWS RDS PostgreSQL (Managed Database)
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: database-config
+  namespace: telematics-prod
+data:
+  database_url: "postgresql://telematics:secure_password@telematics-db.amazonaws.com:5432/telematics"
+  redis_url: "redis://telematics-cache.amazonaws.com:6379"
+---
+# AWS Application Load Balancer
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: telematics-ingress
+  namespace: telematics-prod
+  annotations:
+    kubernetes.io/ingress.class: alb
+    alb.ingress.kubernetes.io/scheme: internet-facing
+    alb.ingress.kubernetes.io/target-type: ip
+    alb.ingress.kubernetes.io/healthcheck-path: /health
+    alb.ingress.kubernetes.io/ssl-redirect: '443'
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+spec:
+  tls:
+  - hosts:
+    - api.telematics.com
+    - airflow.telematics.com
+    - mlflow.telematics.com
+    secretName: telematics-tls
+  rules:
+  - host: api.telematics.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: api-gateway
+            port:
+              number: 8080
+  - host: airflow.telematics.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: airflow-webserver
+            port:
+              number: 8080
+  - host: mlflow.telematics.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: mlflow
+            port:
+              number: 5000
+---
+# API Gateway Deployment (Auto-scaling)
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: api-gateway
+  namespace: telematics-prod
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: api-gateway
+  template:
+    metadata:
+      labels:
+        app: api-gateway
+    spec:
+      containers:
+      - name: api-gateway
+        image: your-registry/telematics-api-gateway:latest
+        ports:
+        - containerPort: 8080
+        env:
+        - name: TRIP_SERVICE_URL
+          value: "http://trip-service:8081"
+        - name: RISK_SERVICE_URL
+          value: "http://risk-service:8082"
+        - name: PRICING_SERVICE_URL
+          value: "http://pricing-service:8083"
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "250m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          initialDelaySeconds: 10
+          periodSeconds: 5
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          initialDelaySeconds: 30
+          periodSeconds: 10
+---
+# HPA for API Gateway
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: api-gateway-hpa
+  namespace: telematics-prod
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: api-gateway
+  minReplicas: 3
+  maxReplicas: 50
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 70
+  - type: Resource
+    resource:
+      name: memory
+      target:
+        type: Utilization
+        averageUtilization: 80
+---
+# Trip Service with AWS integration
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: trip-service
+  namespace: telematics-prod
+spec:
+  replicas: 5
+  selector:
+    matchLabels:
+      app: trip-service
+  template:
+    metadata:
+      labels:
+        app: trip-service
+    spec:
+      containers:
+      - name: trip-service
+        image: your-registry/telematics-trip-service:latest
+        ports:
+        - containerPort: 8081
+        env:
+        - name: AWS_REGION
+          value: "us-west-2"
+        - name: S3_BUCKET
+          value: "telematics-data-bucket"
+        - name: DYNAMODB_TABLE
+          value: "telematics-trips"
+        - name: KAFKA_BOOTSTRAP_SERVERS
+          value: "kafka-cluster.telematics.local:9092"
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "500m"
+          limits:
+            memory: "1Gi"
+            cpu: "1000m"
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8081
+          initialDelaySeconds: 15
+          periodSeconds: 5
+---
+# Service for API Gateway
+apiVersion: v1
+kind: Service
+metadata:
+  name: api-gateway
+  namespace: telematics-prod
+spec:
+  selector:
+    app: api-gateway
+  ports:
+  - port: 8080
+    targetPort: 8080
+  type: ClusterIP
+---
+# Service for Trip Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: trip-service
+  namespace: telematics-prod
+spec:
+  selector:
+    app: trip-service
+  ports:
+  - port: 8081
+    targetPort: 8081
+  type: ClusterIP
+

@@ -1,0 +1,155 @@
+# US-Scale Telematics Configuration
+# Configuration for downloading and processing telematics data for the entire United States
+
+# US-Scale Download Settings
+us_scale:
+  # Download performance settings
+  max_concurrent_downloads: 5
+  api_rate_limits:
+    openmeteo_requests_per_minute: 60
+    overpass_requests_per_minute: 10
+    traffic_requests_per_minute: 30
+  
+  # Data storage settings
+  enable_compression: true
+  compression_format: "gzip"
+  chunk_size_mb: 100  # Split large files into chunks
+  
+  # Geographic partitioning
+  download_strategy: "by_region"  # options: "by_region", "by_state", "by_city"
+  
+  # Retry and error handling
+  max_retries: 3
+  retry_delay_seconds: 10
+  timeout_seconds: 300
+  
+  # Progress tracking
+  save_progress_interval_minutes: 5
+  progress_file: "./data/raw/download_progress.json"
+
+# Data size estimates and warnings
+estimates:
+  weather_data:
+    daily_records_per_city_per_year: 365
+    cities_per_region: 4
+    regions: 6
+    estimated_size_mb: 1500
+    
+  speed_limits:
+    ways_per_state_estimate: 50000
+    states: 50
+    estimated_size_gb: 12
+    
+  traffic_data:
+    major_cities: 25
+    segments_per_city: 1000
+    estimated_size_mb: 800
+
+# Regional definitions for downloads
+regions:
+  priority_order: ["midwest", "west", "southeast", "northeast", "southwest", "alaska_hawaii"]
+  
+  # Download schedule for managed rollout
+  download_schedule:
+    development: ["midwest"]  # For testing
+    staging: ["midwest", "west"]  # For validation  
+    production: ["midwest", "west", "southeast", "northeast", "southwest", "alaska_hawaii"]  # Full US
+
+# API endpoints and keys
+apis:
+  openmeteo:
+    base_url: "https://archive-api.open-meteo.com/v1/archive"
+    free_tier_limit: 10000  # requests per day
+    requires_key: false
+    
+  overpass:
+    base_url: "https://overpass-api.de/api/interpreter"
+    alternative_urls:
+      - "https://overpass.openstreetmap.ru/api/interpreter"
+      - "https://overpass.openstreetmap.fr/api/interpreter"
+    requires_key: false
+    
+  traffic_sources:
+    chicago:
+      url: "https://data.cityofchicago.org/resource/77hq-huss.json"
+      format: "json"
+      requires_key: false
+    seattle: 
+      url: "https://data.seattle.gov/resource/26ge-y346.json"
+      format: "json"
+      requires_key: false
+    austin:
+      url: "https://data.austintexas.gov/resource/sh59-i6y9.json"
+      format: "json"
+      requires_key: false
+
+# Storage paths for US-scale data
+storage:
+  base_path: "./data/raw"
+  us_weather_path: "./data/raw/weather_us"
+  us_speed_limits_path: "./data/raw/speed_limits_us"
+  us_traffic_path: "./data/raw/traffic_us"
+  
+  # Archive settings for large datasets
+  archive_old_data: true
+  archive_after_days: 365
+  archive_format: "zip"
+
+# Monitoring and alerts
+monitoring:
+  disk_space_warning_gb: 5
+  disk_space_error_gb: 2
+  memory_usage_warning_gb: 8
+  
+  # Progress notifications
+  notify_on_completion: true
+  notify_on_errors: true
+  notification_methods: ["log", "file"]  # could add "email", "slack"
+
+# Performance optimization
+performance:
+  # Memory management
+  max_dataframe_size_mb: 500
+  use_chunked_processing: true
+  chunk_overlap_pct: 10
+  
+  # Disk I/O optimization
+  buffer_size_mb: 64
+  use_async_io: false  # Set to true for very large downloads
+  
+  # CPU optimization
+  max_cpu_usage_pct: 80
+  enable_parallel_processing: true
+
+# Data quality settings
+quality:
+  # Validation thresholds
+  min_weather_records_per_city: 300  # ~85% of year
+  min_speed_limit_coverage_pct: 70   # 70% of roads should have speed limits
+  max_missing_data_pct: 15
+  
+  # Cleanup settings
+  remove_duplicate_records: true
+  standardize_timestamps: true
+  validate_coordinates: true
+  
+  # Data freshness
+  max_weather_age_days: 30
+  max_traffic_age_hours: 24
+  max_speed_limit_age_days: 90
+
+# Development and testing
+development:
+  # Sample download settings for testing
+  sample_mode: true
+  sample_cities_per_region: 2
+  sample_states: ["CA", "IL", "NY", "TX", "FL"]
+  
+  # Debug settings
+  verbose_logging: true
+  save_debug_files: true
+  debug_output_path: "./data/debug"
+  
+  # Performance testing
+  benchmark_downloads: false
+  benchmark_output_file: "./data/benchmark_results.json"
