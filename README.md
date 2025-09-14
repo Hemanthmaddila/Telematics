@@ -1,8 +1,8 @@
 # Telematics Insurance Risk Assessment System - SUBMISSION
 
-**Author:** Telematics Developer  
-**Project Repository:** https://github.com/YourGitHubUsername/telematics-insurance-ml  
-**Date:** December 2024  
+
+**Project Repository:** (https://github.com/Hemanthmaddila/Telematics.git)
+
 
 ---
 
