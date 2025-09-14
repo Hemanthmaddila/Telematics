@@ -2,10 +2,8 @@
 TELEMATICS INSURANCE RISK ASSESSMENT SYSTEM - README
 =================================================================
 
-Project Repository: https://github.com/YourGitHubUsername/telematics-insurance-ml
-Author: Telematics Developer
-Date: December 2024
-Version: 1.0
+Project Repository: https://github.com/Hemanthmaddila/Telematics.git
+
 
 🌐 LIVE SYSTEM ACCESS (AWS Cloud Production):
 API Gateway: http://telematics-alb-1568825282.us-east-2.elb.amazonaws.com
