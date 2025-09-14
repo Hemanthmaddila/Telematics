@@ -1,0 +1,938 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MyDriveSafe - Personal Driving Dashboard</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --primary-color: #2563eb;
+            --secondary-color: #0ea5e9;
+            --success-color: #10b981;
+            --warning-color: #f59e0b;
+            --danger-color: #ef4444;
+            --dark-color: #1e293b;
+        }
+        
+        body {
+            background-color: #f8fafc;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        .navbar-brand {
+            font-weight: 700;
+            color: var(--primary-color) !important;
+        }
+        
+        .sidebar {
+            background: linear-gradient(180deg, var(--primary-color), var(--secondary-color));
+            color: white;
+            min-height: 100vh;
+            padding-top: 20px;
+        }
+        
+        .sidebar .nav-link {
+            color: rgba(255, 255, 255, 0.8);
+            padding: 12px 20px;
+            border-radius: 8px;
+            margin: 5px 10px;
+            transition: all 0.3s;
+        }
+        
+        .sidebar .nav-link:hover, .sidebar .nav-link.active {
+            background-color: rgba(255, 255, 255, 0.2);
+            color: white;
+        }
+        
+        .dashboard-card {
+            border-radius: 15px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+            border: none;
+            margin-bottom: 25px;
+            transition: transform 0.3s;
+        }
+        
+        .dashboard-card:hover {
+            transform: translateY(-5px);
+        }
+        
+        .score-card {
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            color: white;
+        }
+        
+        .metric-value {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin: 10px 0;
+        }
+        
+        .progress-bar-custom {
+            height: 12px;
+            border-radius: 10px;
+        }
+        
+        .trip-item {
+            border-left: 4px solid var(--primary-color);
+            padding: 15px;
+            margin-bottom: 15px;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+        }
+        
+        .feedback-item {
+            padding: 8px 12px;
+            margin: 5px 0;
+            border-radius: 8px;
+            font-size: 0.9rem;
+        }
+        
+        .positive-feedback {
+            background-color: rgba(16, 185, 129, 0.1);
+            border-left: 3px solid var(--success-color);
+        }
+        
+        .negative-feedback {
+            background-color: rgba(239, 68, 68, 0.1);
+            border-left: 3px solid var(--danger-color);
+        }
+        
+        .neutral-feedback {
+            background-color: rgba(245, 158, 11, 0.1);
+            border-left: 3px solid var(--warning-color);
+        }
+        
+        .achievement-badge {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--warning-color), #f97316);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 10px;
+            color: white;
+            font-size: 2rem;
+        }
+        
+        .tier-indicator {
+            padding: 8px 15px;
+            border-radius: 20px;
+            font-weight: 600;
+            font-size: 0.9rem;
+        }
+        
+        .tier-excellent {
+            background-color: rgba(16, 185, 129, 0.2);
+            color: var(--success-color);
+        }
+        
+        .tier-good {
+            background-color: rgba(59, 130, 246, 0.2);
+            color: #3b82f6;
+        }
+        
+        .tier-average {
+            background-color: rgba(165, 180, 252, 0.2);
+            color: #a5b4fc;
+        }
+        
+        .premium-change-positive {
+            color: var(--success-color);
+            font-weight: 600;
+        }
+        
+        .premium-change-negative {
+            color: var(--danger-color);
+            font-weight: 600;
+        }
+        
+        .chart-container {
+            height: 300px;
+            position: relative;
+        }
+        
+        .mobile-menu-btn {
+            display: none;
+        }
+        
+        @media (max-width: 768px) {
+            .mobile-menu-btn {
+                display: block;
+            }
+            .sidebar {
+                position: fixed;
+                z-index: 1000;
+                transform: translateX(-100%);
+                transition: transform 0.3s ease-in-out;
+            }
+            .sidebar.show {
+                transform: translateX(0);
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation Bar -->
+    <nav class="navbar navbar-expand-lg navbar-light bg-white shadow-sm">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="#">
+                <i class="fas fa-car me-2"></i>MyDriveSafe
+            </a>
+            <button class="navbar-toggler mobile-menu-btn" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse justify-content-end" id="navbarNav">
+                <ul class="navbar-nav">
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown">
+                            <i class="fas fa-user-circle me-1"></i> John Doe
+                        </a>
+                        <ul class="dropdown-menu dropdown-menu-end">
+                            <li><a class="dropdown-item" href="#"><i class="fas fa-user me-2"></i> Profile</a></li>
+                            <li><a class="dropdown-item" href="#"><i class="fas fa-cog me-2"></i> Settings</a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item" href="#"><i class="fas fa-sign-out-alt me-2"></i> Logout</a></li>
+                        </ul>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container-fluid">
+        <div class="row">
+            <!-- Sidebar -->
+            <div class="col-lg-2 sidebar d-none d-lg-block" id="sidebar">
+                <div class="text-center mb-4">
+                    <div class="rounded-circle bg-white mx-auto d-flex align-items-center justify-content-center" style="width: 80px; height: 80px;">
+                        <i class="fas fa-user text-primary" style="font-size: 2.5rem;"></i>
+                    </div>
+                    <h5 class="mt-3 mb-1">John Doe</h5>
+                    <p class="text-white-50 small mb-0">DL987654321</p>
+                    <span class="badge bg-white text-primary mt-2">Gold Member</span>
+                </div>
+                
+                <ul class="nav flex-column">
+                    <li class="nav-item">
+                        <a class="nav-link active" href="#" id="dashboard-link">
+                            <i class="fas fa-home me-2"></i>Dashboard
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#" id="trips-link">
+                            <i class="fas fa-route me-2"></i>My Trips
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#" id="scores-link">
+                            <i class="fas fa-chart-line me-2"></i>Scores & Trends
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#" id="pricing-link">
+                            <i class="fas fa-dollar-sign me-2"></i>Pricing
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#" id="achievements-link">
+                            <i class="fas fa-trophy me-2"></i>Achievements
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#" id="settings-link">
+                            <i class="fas fa-cog me-2"></i>Settings
+                        </a>
+                    </li>
+                </ul>
+            </div>
+
+            <!-- Main Content -->
+            <div class="col-lg-10 col-12">
+                <div class="container py-4">
+                    <!-- Dashboard View -->
+                    <div id="dashboard-view">
+                        <div class="d-flex justify-content-between align-items-center mb-4">
+                            <h2><i class="fas fa-tachometer-alt me-2"></i>Dashboard</h2>
+                            <div>
+                                <span class="text-muted small me-3">Last updated: Today, 10:30 AM</span>
+                                <button class="btn btn-outline-primary btn-sm">
+                                    <i class="fas fa-sync-alt me-1"></i>Refresh
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Key Metrics Cards -->
+                        <div class="row">
+                            <div class="col-md-3 col-6 mb-4">
+                                <div class="card dashboard-card text-center">
+                                    <div class="card-body">
+                                        <i class="fas fa-star text-warning fs-2 mb-2"></i>
+                                        <div class="metric-value">82.5</div>
+                                        <div class="text-muted small">Current Score</div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-3 col-6 mb-4">
+                                <div class="card dashboard-card text-center">
+                                    <div class="card-body">
+                                        <i class="fas fa-trophy text-success fs-2 mb-2"></i>
+                                        <div class="metric-value">47</div>
+                                        <div class="text-muted small">Total Trips</div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-3 col-6 mb-4">
+                                <div class="card dashboard-card text-center">
+                                    <div class="card-body">
+                                        <i class="fas fa-medal text-info fs-2 mb-2"></i>
+                                        <div class="metric-value">Gold</div>
+                                        <div class="text-muted small">Membership Tier</div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-3 col-6 mb-4">
+                                <div class="card dashboard-card text-center">
+                                    <div class="card-body">
+                                        <i class="fas fa-money-bill-wave text-primary fs-2 mb-2"></i>
+                                        <div class="metric-value">$112.50</div>
+                                        <div class="text-muted small">Monthly Premium</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Score Card and Premium Card -->
+                        <div class="row">
+                            <div class="col-lg-8 mb-4">
+                                <div class="card dashboard-card">
+                                    <div class="card-header bg-white">
+                                        <h5 class="mb-0"><i class="fas fa-chart-bar me-2"></i>Your Driving Score</h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="d-flex justify-content-between align-items-center mb-3">
+                                            <div>
+                                                <h3 class="mb-0">82.5</h3>
+                                                <p class="text-muted mb-0">Out of 100</p>
+                                            </div>
+                                            <div class="text-end">
+                                                <span class="badge tier-good">GOOD</span>
+                                                <div class="small text-muted mt-1">+2.3 from last month</div>
+                                            </div>
+                                        </div>
+                                        <div class="progress mb-3">
+                                            <div class="progress-bar progress-bar-custom bg-success" role="progressbar" style="width: 82.5%"></div>
+                                        </div>
+                                        <div class="d-flex justify-content-between small text-muted">
+                                            <span>0</span>
+                                            <span>25</span>
+                                            <span>50</span>
+                                            <span>75</span>
+                                            <span>100</span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Recent Trips -->
+                                <div class="card dashboard-card mt-4">
+                                    <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                                        <h5 class="mb-0"><i class="fas fa-history me-2"></i>Recent Trips</h5>
+                                        <a href="#" class="text-decoration-none">View All</a>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="trip-item">
+                                            <div class="d-flex justify-content-between">
+                                                <div>
+                                                    <h6 class="mb-1">Morning Commute</h6>
+                                                    <p class="small text-muted mb-0">Sep 12, 2025 • 25.3 miles • 45 min</p>
+                                                </div>
+                                                <div class="text-end">
+                                                    <div class="fw-bold">85</div>
+                                                    <div class="small text-success">+3</div>
+                                                </div>
+                                            </div>
+                                            <div class="mt-2">
+                                                <span class="feedback-item positive-feedback">
+                                                    <i class="fas fa-check-circle me-1"></i> Great braking habits
+                                                </span>
+                                            </div>
+                                        </div>
+                                        
+                                        <div class="trip-item">
+                                            <div class="d-flex justify-content-between">
+                                                <div>
+                                                    <h6 class="mb-1">City Driving</h6>
+                                                    <p class="small text-muted mb-0">Sep 10, 2025 • 18.7 miles • 32 min</p>
+                                                </div>
+                                                <div class="text-end">
+                                                    <div class="fw-bold">78</div>
+                                                    <div class="small text-warning">+2</div>
+                                                </div>
+                                            </div>
+                                            <div class="mt-2">
+                                                <span class="feedback-item neutral-feedback">
+                                                    <i class="fas fa-exclamation-circle me-1"></i> Watch phone usage
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="col-lg-4 mb-4">
+                                <!-- Premium Card -->
+                                <div class="card dashboard-card">
+                                    <div class="card-header score-card">
+                                        <h5 class="mb-0 text-white"><i class="fas fa-tag me-2"></i>Your Premium</h5>
+                                    </div>
+                                    <div class="card-body text-center">
+                                        <div class="display-4 fw-bold text-primary mb-2">$112.50</div>
+                                        <p class="text-muted mb-3">Monthly Premium</p>
+                                        <div class="alert alert-success">
+                                            <i class="fas fa-gift me-2"></i>
+                                            <strong>You save $37.50/month!</strong>
+                                        </div>
+                                        <div class="mt-3">
+                                            <p class="mb-1"><strong>Based on your EXCELLENT score</strong></p>
+                                            <p class="small text-muted">25% discount applied</p>
+                                        </div>
+                                        <button class="btn btn-outline-primary w-100">
+                                            <i class="fas fa-file-invoice-dollar me-1"></i> View Billing Details
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <!-- Achievements -->
+                                <div class="card dashboard-card mt-4">
+                                    <div class="card-header bg-white">
+                                        <h5 class="mb-0"><i class="fas fa-award me-2"></i>Recent Achievements</h5>
+                                    </div>
+                                    <div class="card-body text-center">
+                                        <div class="achievement-badge">
+                                            <i class="fas fa-medal"></i>
+                                        </div>
+                                        <h6>Braking Expert</h6>
+                                        <p class="small text-muted">For consistent smooth braking</p>
+                                        <div class="achievement-badge mt-4">
+                                            <i class="fas fa-shield-alt"></i>
+                                        </div>
+                                        <h6>Safety Champion</h6>
+                                        <p class="small text-muted">Scored 90+ five times</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Trips View -->
+                    <div id="trips-view" style="display: none;">
+                        <div class="d-flex justify-content-between align-items-center mb-4">
+                            <h2><i class="fas fa-route me-2"></i>My Trips</h2>
+                            <button class="btn btn-primary">
+                                <i class="fas fa-plus me-1"></i>New Trip
+                            </button>
+                        </div>
+
+                        <div class="card dashboard-card">
+                            <div class="card-header bg-white">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <h5 class="mb-0">Trip History</h5>
+                                    </div>
+                                    <div class="col-md-6 text-md-end">
+                                        <select class="form-select form-select-sm d-inline w-auto">
+                                            <option>Last 30 Days</option>
+                                            <option>Last 7 Days</option>
+                                            <option>Last 90 Days</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="card-body">
+                                <div class="table-responsive">
+                                    <table class="table table-hover">
+                                        <thead>
+                                            <tr>
+                                                <th>Date</th>
+                                                <th>Distance</th>
+                                                <th>Duration</th>
+                                                <th>Score</th>
+                                                <th>Feedback</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr>
+                                                <td>Sep 12, 2025<br><small class="text-muted">10:30 AM</small></td>
+                                                <td>25.3 miles</td>
+                                                <td>45 min</td>
+                                                <td><span class="badge bg-success">85</span></td>
+                                                <td>
+                                                    <button class="btn btn-sm btn-outline-primary" onclick="showTripDetails('trip1')">
+                                                        <i class="fas fa-comment-dots me-1"></i>View
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                            <tr>
+                                                <td>Sep 10, 2025<br><small class="text-muted">8:15 AM</small></td>
+                                                <td>18.7 miles</td>
+                                                <td>32 min</td>
+                                                <td><span class="badge bg-warning">78</span></td>
+                                                <td>
+                                                    <button class="btn btn-sm btn-outline-primary" onclick="showTripDetails('trip2')">
+                                                        <i class="fas fa-comment-dots me-1"></i>View
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                            <tr>
+                                                <td>Sep 8, 2025<br><small class="text-muted">5:45 PM</small></td>
+                                                <td>32.1 miles</td>
+                                                <td>58 min</td>
+                                                <td><span class="badge bg-success">88</span></td>
+                                                <td>
+                                                    <button class="btn btn-sm btn-outline-primary" onclick="showTripDetails('trip3')">
+                                                        <i class="fas fa-comment-dots me-1"></i>View
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Scores & Trends View -->
+                    <div id="scores-view" style="display: none;">
+                        <div class="d-flex justify-content-between align-items-center mb-4">
+                            <h2><i class="fas fa-chart-line me-2"></i>Scores & Trends</h2>
+                            <div>
+                                <select class="form-select form-select-sm d-inline w-auto">
+                                    <option>Last 30 Days</option>
+                                    <option>Last 7 Days</option>
+                                    <option>Last 90 Days</option>
+                                    <option>Last Year</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-lg-8 mb-4">
+                                <div class="card dashboard-card">
+                                    <div class="card-header bg-white">
+                                        <h5 class="mb-0"><i class="fas fa-chart-area me-2"></i>Score Trend</h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <canvas id="scoreChart" height="300"></canvas>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="col-lg-4 mb-4">
+                                <div class="card dashboard-card">
+                                    <div class="card-header bg-white">
+                                        <h5 class="mb-0"><i class="fas fa-percentage me-2"></i>Score Breakdown</h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <canvas id="breakdownChart" height="250"></canvas>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-4 mb-4">
+                                <div class="card dashboard-card">
+                                    <div class="card-body text-center">
+                                        <i class="fas fa-brake text-primary fs-2 mb-3"></i>
+                                        <h4>Braking</h4>
+                                        <div class="progress">
+                                            <div class="progress-bar bg-success" role="progressbar" style="width: 85%"></div>
+                                        </div>
+                                        <div class="mt-2 fw-bold">Excellent</div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="col-md-4 mb-4">
+                                <div class="card dashboard-card">
+                                    <div class="card-body text-center">
+                                        <i class="fas fa-tachometer-alt text-warning fs-2 mb-3"></i>
+                                        <h4>Acceleration</h4>
+                                        <div class="progress">
+                                            <div class="progress-bar bg-warning" role="progressbar" style="width: 72%"></div>
+                                        </div>
+                                        <div class="mt-2 fw-bold">Good</div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="col-md-4 mb-4">
+                                <div class="card dashboard-card">
+                                    <div class="card-body text-center">
+                                        <i class="fas fa-mobile-alt text-danger fs-2 mb-3"></i>
+                                        <h4>Phone Usage</h4>
+                                        <div class="progress">
+                                            <div class="progress-bar bg-danger" role="progressbar" style="width: 45%"></div>
+                                        </div>
+                                        <div class="mt-2 fw-bold">Needs Improvement</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Pricing View -->
+                    <div id="pricing-view" style="display: none;">
+                        <div class="d-flex justify-content-between align-items-center mb-4">
+                            <h2><i class="fas fa-dollar-sign me-2"></i>Pricing Details</h2>
+                            <button class="btn btn-outline-primary">
+                                <i class="fas fa-download me-1"></i>Download Invoice
+                            </button>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-lg-8 mb-4">
+                                <div class="card dashboard-card">
+                                    <div class="card-header bg-white">
+                                        <h5 class="mb-0"><i class="fas fa-receipt me-2"></i>Current Billing</h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="row mb-4">
+                                            <div class="col-md-6">
+                                                <h4>Monthly Premium</h4>
+                                                <div class="display-3 text-primary fw-bold">$112.50</div>
+                                                <p class="text-muted">Due: Oct 1, 2025</p>
+                                            </div>
+                                            <div class="col-md-6 text-md-end">
+                                                <div class="alert alert-success d-inline-block">
+                                                    <i class="fas fa-gift me-1"></i>
+                                                    <strong>You save $37.50/month!</strong>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        
+                                        <h5>Breakdown</h5>
+                                        <div class="table-responsive">
+                                            <table class="table">
+                                                <tbody>
+                                                    <tr>
+                                                        <td>Base Premium</td>
+                                                        <td class="text-end">$150.00</td>
+                                                    </tr>
+                                                    <tr>
+                                                        <td>Safe Driving Discount</td>
+                                                        <td class="text-end text-success">-$37.50 (25%)</td>
+                                                    </tr>
+                                                    <tr class="border-top">
+                                                        <td><strong>Total</strong></td>
+                                                        <td class="text-end"><strong>$112.50</strong></td>
+                                                    </tr>
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="col-lg-4 mb-4">
+                                <div class="card dashboard-card">
+                                    <div class="card-header bg-white">
+                                        <h5 class="mb-0"><i class="fas fa-medal me-2"></i>Your Tier</h5>
+                                    </div>
+                                    <div class="card-body text-center">
+                                        <div class="achievement-badge mb-3">
+                                            <i class="fas fa-crown"></i>
+                                        </div>
+                                        <h3>EXCELLENT</h3>
+                                        <p class="text-muted">Top 15% of drivers</p>
+                                        <div class="alert alert-info">
+                                            <i class="fas fa-info-circle me-1"></i>
+                                            <strong>Keep it up!</strong> You're among the safest drivers.
+                                        </div>
+                                        <h6>Benefits:</h6>
+                                        <ul class="text-start small">
+                                            <li>25% premium discount</li>
+                                            <li>Priority customer support</li>
+                                            <li>Annual driving report</li>
+                                            <li>Accident forgiveness</li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Achievements View -->
+                    <div id="achievements-view" style="display: none;">
+                        <div class="d-flex justify-content-between align-items-center mb-4">
+                            <h2><i class="fas fa-trophy me-2"></i>My Achievements</h2>
+                            <div class="text-muted">47 Achievements Earned</div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-4 mb-4">
+                                <div class="card dashboard-card text-center">
+                                    <div class="card-body">
+                                        <div class="achievement-badge mb-3">
+                                            <i class="fas fa-crown"></i>
+                                        </div>
+                                        <h4>EXCELLENT Driver</h4>
+                                        <p class="text-muted">Scored 85+ three times</p>
+                                        <div class="text-success">Earned: Sep 5, 2025</div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="col-md-4 mb-4">
+                                <div class="card dashboard-card text-center">
+                                    <div class="card-body">
+                                        <div class="achievement-badge mb-3">
+                                            <i class="fas fa-brake"></i>
+                                        </div>
+                                        <h4>Braking Expert</h4>
+                                        <p class="text-muted">Perfect braking score</p>
+                                        <div class="text-success">Earned: Aug 28, 2025</div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="col-md-4 mb-4">
+                                <div class="card dashboard-card text-center">
+                                    <div class="card-body">
+                                        <div class="achievement-badge mb-3">
+                                            <i class="fas fa-calendar-check"></i>
+                                        </div>
+                                        <h4>Consistent Performer</h4>
+                                        <p class="text-muted">10 trips without dropping below 75</p>
+                                        <div class="text-success">Earned: Aug 15, 2025</div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="col-md-4 mb-4">
+                                <div class="card dashboard-card text-center">
+                                    <div class="card-body">
+                                        <div class="achievement-badge mb-3">
+                                            <i class="fas fa-star"></i>
+                                        </div>
+                                        <h4>5-Star Rating</h4>
+                                        <p class="text-muted">Perfect score on 5 consecutive trips</p>
+                                        <div class="text-success">Earned: Jul 30, 2025</div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="col-md-4 mb-4">
+                                <div class="card dashboard-card text-center">
+                                    <div class="card-body">
+                                        <div class="achievement-badge mb-3">
+                                            <i class="fas fa-shield-alt"></i>
+                                        </div>
+                                        <h4>Safety Champion</h4>
+                                        <p class="text-muted">Scored 90+ five times</p>
+                                        <div class="text-success">Earned: Jul 12, 2025</div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="col-md-4 mb-4">
+                                <div class="card dashboard-card text-center">
+                                    <div class="card-body">
+                                        <div class="achievement-badge mb-3">
+                                            <i class="fas fa-medal"></i>
+                                        </div>
+                                        <h4>Gold Member</h4>
+                                        <p class="text-muted">Reached Gold membership level</p>
+                                        <div class="text-success">Earned: Jun 18, 2025</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Trip Details Modal -->
+    <div class="modal fade" id="tripDetailsModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Trip Details</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6>Trip Information</h6>
+                            <p><strong>Date:</strong> September 12, 2025</p>
+                            <p><strong>Start Time:</strong> 10:30 AM</p>
+                            <p><strong>Duration:</strong> 45 minutes</p>
+                            <p><strong>Distance:</strong> 25.3 miles</p>
+                            <p><strong>Score:</strong> <span class="badge bg-success">85</span></p>
+                        </div>
+                        <div class="col-md-6">
+                            <h6>Performance Metrics</h6>
+                            <p><strong>Hard Brakes:</strong> 1</p>
+                            <p><strong>Rapid Accels:</strong> 2</p>
+                            <p><strong>Max Speed:</strong> 72 mph</p>
+                            <p><strong>Phone Usage:</strong> 45 seconds</p>
+                        </div>
+                    </div>
+                    
+                    <hr>
+                    
+                    <h6>Real-time Feedback</h6>
+                    <div class="feedback-item positive-feedback mb-2">
+                        <i class="fas fa-check-circle me-1"></i> Great effort on braking, but try to reduce hard stops.
+                    </div>
+                    <div class="feedback-item positive-feedback mb-2">
+                        <i class="fas fa-check-circle me-1"></i> Watch your acceleration for even smoother driving.
+                    </div>
+                    <div class="feedback-item neutral-feedback mb-2">
+                        <i class="fas fa-exclamation-circle me-1"></i> Try to minimize phone usage while driving.
+                    </div>
+                    <div class="feedback-item positive-feedback">
+                        <i class="fas fa-check-circle me-1"></i> Good speed management, stay within limits.
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        // Navigation functionality
+        function showView(viewId) {
+            // Hide all views
+            document.getElementById('dashboard-view').style.display = 'none';
+            document.getElementById('trips-view').style.display = 'none';
+            document.getElementById('scores-view').style.display = 'none';
+            document.getElementById('pricing-view').style.display = 'none';
+            document.getElementById('achievements-view').style.display = 'none';
+            
+            // Show selected view
+            document.getElementById(viewId + '-view').style.display = 'block';
+            
+            // Update active nav link
+            document.querySelectorAll('.nav-link').forEach(link => {
+                link.classList.remove('active');
+            });
+            document.getElementById(viewId + '-link').classList.add('active');
+        }
+        
+        // Event listeners for navigation
+        document.getElementById('dashboard-link').addEventListener('click', function(e) {
+            e.preventDefault();
+            showView('dashboard');
+        });
+        
+        document.getElementById('trips-link').addEventListener('click', function(e) {
+            e.preventDefault();
+            showView('trips');
+        });
+        
+        document.getElementById('scores-link').addEventListener('click', function(e) {
+            e.preventDefault();
+            showView('scores');
+        });
+        
+        document.getElementById('pricing-link').addEventListener('click', function(e) {
+            e.preventDefault();
+            showView('pricing');
+        });
+        
+        document.getElementById('achievements-link').addEventListener('click', function(e) {
+            e.preventDefault();
+            showView('achievements');
+        });
+        
+        // Show trip details
+        function showTripDetails(tripId) {
+            var modal = new bootstrap.Modal(document.getElementById('tripDetailsModal'));
+            modal.show();
+        }
+        
+        // Initialize charts when scores view is shown
+        document.getElementById('scores-link').addEventListener('click', function() {
+            // Initialize score chart
+            var ctx1 = document.getElementById('scoreChart').getContext('2d');
+            var scoreChart = new Chart(ctx1, {
+                type: 'line',
+                data: {
+                    labels: ['Aug 1', 'Aug 8', 'Aug 15', 'Aug 22', 'Aug 29', 'Sep 5', 'Sep 12'],
+                    datasets: [{
+                        label: 'Driving Score',
+                        data: [75, 78, 82, 85, 88, 82, 85],
+                        borderColor: '#2563eb',
+                        backgroundColor: 'rgba(37, 99, 235, 0.1)',
+                        tension: 0.3,
+                        fill: true
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: false,
+                            min: 70,
+                            max: 100
+                        }
+                    }
+                }
+            });
+            
+            // Initialize breakdown chart
+            var ctx2 = document.getElementById('breakdownChart').getContext('2d');
+            var breakdownChart = new Chart(ctx2, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Braking', 'Acceleration', 'Speed', 'Phone Usage'],
+                    datasets: [{
+                        data: [25, 20, 30, 25],
+                        backgroundColor: [
+                            '#10b981',
+                            '#f59e0b',
+                            '#8b5cf6',
+                            '#ef4444'
+                        ]
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom'
+                        }
+                    }
+                }
+            });
+        });
+        
+        // Mobile menu toggle
+        document.querySelector('.mobile-menu-btn').addEventListener('click', function() {
+            var sidebar = document.getElementById('sidebar');
+            sidebar.classList.toggle('show');
+        });
+        
+        // Close sidebar when clicking outside on mobile
+        document.addEventListener('click', function(e) {
+            var sidebar = document.getElementById('sidebar');
+            if (window.innerWidth < 992 && sidebar.classList.contains('show') && 
+                !sidebar.contains(e.target) && !e.target.closest('.mobile-menu-btn')) {
+                sidebar.classList.remove('show');
+            }
+        });
+    </script>
+</body>
+</html>

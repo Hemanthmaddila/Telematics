@@ -1,0 +1,60 @@
+{
+  "family": "telematics-api-gateway",
+  "networkMode": "awsvpc",
+  "requiresCompatibilities": ["FARGATE"],
+  "cpu": "256",
+  "memory": "512",
+  "executionRoleArn": "arn:aws:iam::552927148159:role/TelematicsEcsTaskRole",
+  "containerDefinitions": [
+    {
+      "name": "api-gateway",
+      "image": "552927148159.dkr.ecr.us-east-2.amazonaws.com/telematics/api-gateway:latest",
+      "portMappings": [
+        {
+          "containerPort": 8080,
+          "hostPort": 8080,
+          "protocol": "tcp"
+        }
+      ],
+      "essential": true,
+      "environment": [
+        {
+          "name": "PORT",
+          "value": "8080"
+        },
+        {
+          "name": "TRIP_SERVICE_URL",
+          "value": "http://trip-service.telematics.local:8081"
+        },
+        {
+          "name": "RISK_SERVICE_URL",
+          "value": "http://risk-service.telematics.local:8082"
+        },
+        {
+          "name": "PRICING_SERVICE_URL",
+          "value": "http://pricing-service.telematics.local:8083"
+        },
+        {
+          "name": "DRIVER_SERVICE_URL",
+          "value": "http://driver-service.telematics.local:8084"
+        },
+        {
+          "name": "NOTIFICATION_SERVICE_URL",
+          "value": "http://notification-service.telematics.local:8085"
+        },
+        {
+          "name": "ANALYTICS_SERVICE_URL",
+          "value": "http://analytics-service.telematics.local:8086"
+        }
+      ],
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "/telematics/api-gateway",
+          "awslogs-region": "us-east-2",
+          "awslogs-stream-prefix": "ecs"
+        }
+      }
+    }
+  ]
+}
