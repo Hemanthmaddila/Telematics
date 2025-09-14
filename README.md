@@ -177,12 +177,3 @@ python src/dashboard/backend/app.py
 
 **This solution exceeds all requirements and delivers a production system that insurance companies could deploy immediately.**
 
----
-
-## 📞 **CONTACT**
-
-- **Repository:** https://github.com/YourGitHubUsername/telematics-insurance-ml
-- **Live System:** http://telematics-alb-1568825282.us-east-2.elb.amazonaws.com
-- **Author:** Telematics Developer
-
-**⚡ ASSESSOR: The live system is ready for immediate testing!**
