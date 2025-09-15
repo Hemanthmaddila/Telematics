@@ -23,28 +23,16 @@ I leveraged several AI tools to accelerate development while maintaining full ow
 
 **🔍 Perplexity AI - Research & Data Analysis**
 - Used for researching insurance industry standards and actuarial best practices
-- Analyzed telematics data patterns and risk correlation studies
-- Researched regulatory compliance requirements (GDPR, SOC2, state insurance laws)
-- Gathered technical documentation for external APIs (OpenMeteo, OpenStreetMap, etc.)
 
 **💻 Cursor IDE - Development Environment**
 - Primary development environment for the entire codebase
-- Utilized AI-powered code completion for faster implementation
-- Leveraged intelligent refactoring suggestions for code optimization
-- Used for managing the complex microservices architecture
-
+- 
 **🧠 Claude - Code Development & Architecture**
-- Assisted with implementing complex ML pipelines and feature engineering
-- Helped optimize XGBoost model configurations and hyperparameter tuning
-- Supported development of real-time stream processing with Kafka/Flink
-- Aided in creating comprehensive API documentation and error handling
-
+- Assisted with coding
+  
 **🐛 Qwen Code - Debugging & Optimization**
-- Used for debugging complex distributed system issues
-- Optimized database queries and caching strategies
-- Resolved Kubernetes deployment configuration problems
-- Performance tuned the real-time event processing pipeline
-
+- Used for debugging
+- 
 **🌟 Gemini - General Implementation & Integration**
 
 
